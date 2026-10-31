@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LPU Water Point Navigator — P16</title>
+  <style>
+    :root {
+      --lpu-orange: #e65100;
+      --lpu-dark-orange: #bf360c;
+      --lpu-navy: #0f172a;
+      --bg: #fff7ed;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --success: #15803d;
+      --danger: #b91c1c;
+      --warning: #b45309;
+      --border: #fed7aa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #431407 100%);
+      color: var(--text);
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--lpu-orange);
+    }
+
+    header {
+      background: linear-gradient(90deg, #ea580c 0%, #c2410c 100%);
+      color: white;
+      padding: 18px 16px;
+      text-align: center;
+      border-bottom: 4px solid #7c2d12;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; }
+    .sub-brand { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.95; }
+
+    .sync-bar {
+      background: var(--lpu-navy);
+      padding: 8px 16px;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      color: #fed7aa;
+      font-weight: 500;
+    }
+
+    .main-body { padding: 16px; flex: 1; background: var(--bg); }
+
+    .input-card {
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 4px rgba(234, 88, 12, 0.05);
+    }
+    .input-title { font-size: 0.85rem; font-weight: 700; color: var(--lpu-dark-orange); margin-bottom: 8px; }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    label { font-size: 0.75rem; font-weight: 600; color: var(--lpu-navy); display: block; margin-bottom: 3px; }
+    select {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1.5px solid #fdba74;
+      background: #fff;
+      font-size: 0.85rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .bridge-banner {
+      margin-top: 10px;
+      background: #ffedd5;
+      border-left: 4px solid var(--lpu-orange);
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 0.74rem;
+      color: #9a3412;
+      line-height: 1.3;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .btn {
+      padding: 12px 10px;
+      border: 2px solid var(--lpu-orange);
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      background: white;
+      color: var(--lpu-dark-orange);
+      transition: all 0.2s;
+    }
+    .btn.active-tab {
+      background: var(--lpu-orange);
+      color: white;
+      box-shadow: 0 4px 10px rgba(230, 81, 0, 0.3);
+    }
+
+    /* Status Badges & Cards */
+    .cooler-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      position: relative;
+    }
+
+    /* Visual highlights for faulty coolers */
+    .card-fault-hot { border-color: #fca5a5; background: #fff5f5; }
+    .card-fault-empty { border-color: #cbd5e1; background: #f8fafc; opacity: 0.85; }
+
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .card-title { font-weight: 700; font-size: 0.95rem; color: var(--lpu-navy); }
+    
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .badge-chilled { background: #dcfce7; color: var(--success); }
+    .badge-hot { background: #fee2e2; color: var(--danger); }
+    .badge-empty { background: #e2e8f0; color: #475569; }
+
+    .route-meta {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--lpu-dark-orange);
+      margin: 6px 0 4px 0;
+    }
+    .bridge-path {
+      font-size: 0.74rem;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px dashed #fed7aa;
+      text-align: center;
+    }
+    .metric-item { background: #fff7ed; padding: 6px; border-radius: 8px; border: 1px solid #ffedd5; }
+    .metric-item span { display: block; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .metric-item strong { font-size: 0.85rem; }
+
+    .alert-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--danger);
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="sub-brand">LPU Campus Smart Facilities</div>
+    <h1>Water Point Live Navigator</h1>
+    <span style="font-size: 0.72rem; opacity: 0.9;">Project P16 • Design Thinking Telemetry</span>
+  </header>
+
+  <div class="sync-bar">
+    <span id="active-location-label">Block 34 • Floor 3</span>
+    <span id="sync-timer">Sync in 60s</span>
+  </div>
+
+  <div class="main-body">
+    <div class="input-card">
+      <div class="input-title">Select Your Current Position</div>
+      <div class="input-grid">
+        <div>
+          <label>Building:</label>
+          <select id="user-block" onchange="handleLocationChange()">
+            <optgroup label="Cluster A (Connected)">
+              <option value="33">Block 33</option>
+              <option value="34" selected>Block 34</option>
+            </optgroup>
+            <optgroup label="Cluster B (Connected)">
+              <option value="36">Block 36</option>
+              <option value="37">Block 37</option>
+              <option value="38">Block 38</option>
+            </optgroup>
+            <optgroup label="Cluster C (Connected)">
+              <option value="25">Block 25</option>
+              <option value="26">Block 26</option>
+              <option value="27">Block 27</option>
+              <option value="28">Block 28</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label>Floor (1-8):</label>
+          <select id="user-floor" onchange="handleLocationChange()">
+            <option value="1">Floor 1</option>
+            <option value="2">Floor 2</option>
+            <option value="3" selected>Floor 3</option>
+            <option value="4">Floor 4</option>
+            <option value="5">Floor 5</option>
+            <option value="6">Floor 6</option>
+            <option value="7">Floor 7</option>
+            <option value="8">Floor 8</option>
+          </select>
+        </div>
+        <div>
+          <label>Classroom:</label>
+          <select id="user-class" onchange="handleLocationChange()">
+            <option value="1">Room 01</option>
+            <option value="2">Room 02</option>
+            <option value="3">Room 03</option>
+            <option value="4">Room 04</option>
+            <option value="5">Room 05</option>
+            <option value="6">Room 06</option>
+            <option value="7">Room 07</option>
+            <option value="8">Room 08</option>
+            <option value="9">Room 09</option>
+            <option value="10">Room 10</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bridge-banner">
+        <strong>Campus Skywalks Active:</strong> Connected clusters cross via <strong>Floor 3+ bridges</strong>.
+      </div>
+    </div>
+
+    <!-- The Two Action Buttons -->
+    <div class="btn-group">
+      <button id="btn-nearest" class="btn" onclick="switchView('nearest')">📍 See Nearest Usable</button>
+      <button id="btn-all" class="btn active-tab" onclick="switchView('all')">📋 See All Coolers</button>
+    </div>
+
+    <!-- Container for Cooler Cards -->
+    <div id="results-area">
+      <p style="text-align: center; color: var(--muted); padding: 20px;">Streaming sensor telemetry...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeMode = 'all';
+  let countdown = 60;
+
+  function handleLocationChange() {
+    const block = document.getElementById('user-block').value;
+    const floor = document.getElementById('user-floor').value;
+    const room = document.getElementById('user-class').value;
+    document.getElementById('active-location-label').innerText = `Block ${block} • Floor ${floor}, Room ${room}`;
+    loadData();
+  }
+
+  function switchView(mode) {
+    activeMode = mode;
+    document.getElementById('btn-all').classList.toggle('active-tab', mode === 'all');
+    document.getElementById('btn-nearest').classList.toggle('active-tab', mode === 'nearest');
+    loadData();
+  }
+
+  async function loadData() {
+    const block = document.getElementById('user-block').value;
+    const floor = document.getElementById('user-floor').value;
+    const room = document.getElementById('user-class').value;
+    const container = document.getElementById('results-area');
+
+    try {
+      if (activeMode === 'nearest') {
+        const res = await fetch(`/api/coolers/nearest?block=${block}&floor=${floor}&classroom=${room}`);
+        const data = await res.json();
+        
+        container.innerHTML = `
+          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 700; color: #065f46;">
+            Closest <u>Working & Chilled</u> Water Point for Your Position:
+          </div>
+          ${renderCard(data.nearest)}
+        `;
+      } else {
+        const res = await fetch(`/api/coolers?block=${block}&floor=${floor}&classroom=${room}`);
+        const data = await res.json();
+        container.innerHTML = data.coolers.map(c => renderCard(c)).join('');
+      }
+    } catch (err) {
+      container.innerHTML = '<p style="color: red; text-align: center;">Backend unreachable. Ensure server is running.</p>';
+    }
+  }
+
+  function renderCard(c) {
+    if (!c) return '<p>No matching coolers found.</p>';
+
+    let badgeClass = 'badge-chilled';
+    let cardClass = '';
+    let tempColor = 'var(--lpu-dark-orange)';
+    let alertMsg = '';
+
+    if (c.status_code === 'HOT') {
+      badgeClass = 'badge-hot';
+      cardClass = 'card-fault-hot';
+      tempColor = 'var(--danger)';
+      alertMsg = '<div class="alert-tag">⚠️ Chiller failure detected: Dispensing hot/warm water.</div>';
+    } else if (c.status_code === 'EMPTY') {
+      badgeClass = 'badge-empty';
+      cardClass = 'card-fault-empty';
+      tempColor = 'var(--muted)';
+      alertMsg = '<div class="alert-tag" style="color: #475569;">⛔ Tank is dry: Refill needed.</div>';
+    }
+
+    return `
+      <div class="cooler-card ${cardClass}">
+        <div class="card-top">
+          <div>
+            <div class="card-title">${c.name}</div>
+            <div style="font-size: 0.74rem; color: var(--muted);">${c.near_class}</div>
+          </div>
+          <span class="badge ${badgeClass}">${c.status_label}</span>
+        </div>
+        
+        <div class="route-meta">
+          🚶 ~${c.distance_meters} meters away
+        </div>
+        <div class="bridge-path">
+          ℹ️ ${c.route_note}
+        </div>
+
+        ${alertMsg}
+
+        <div class="metrics">
+          <div class="metric-item">
+            <span>Water Temp</span>
+            <strong style="color: ${tempColor};">${c.temperature_c} °C</strong>
+          </div>
+          <div class="metric-item">
+            <span>Tank Level</span>
+            <strong style="color: ${c.tank_level_percent < 10 ? 'var(--danger)' : 'var(--text)'};">${c.tank_level_percent}%</strong>
+          </div>
+          <div class="metric-item">
+            <span>Purity (TDS)</span>
+            <strong>${c.tds_ppm} ppm</strong>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      countdown = 60;
+      loadData();
+    }
+    document.getElementById('sync-timer').innerText = `Sync in ${countdown}s`;
+  }, 1000);
+
+  window.onload = () => {
+    handleLocationChange();
+  };
+</script>
+
+</body>
+</html>
