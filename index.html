@@ -15,7 +15,6 @@
       --muted: #64748b;
       --success: #15803d;
       --danger: #b91c1c;
-      --warning: #b45309;
       --border: #fed7aa;
     }
 
@@ -126,7 +125,6 @@
       box-shadow: 0 4px 10px rgba(230, 81, 0, 0.3);
     }
 
-    /* Status Badges & Cards */
     .cooler-card {
       background: var(--card-bg);
       border: 1.5px solid var(--border);
@@ -137,7 +135,6 @@
       position: relative;
     }
 
-    /* Visual highlights for faulty coolers */
     .card-fault-hot { border-color: #fca5a5; background: #fff5f5; }
     .card-fault-empty { border-color: #cbd5e1; background: #f8fafc; opacity: 0.85; }
 
@@ -201,7 +198,7 @@
   </header>
 
   <div class="sync-bar">
-    <span id="active-location-label">Block 34 • Floor 3</span>
+    <span id="active-location-label">Block 34 • Floor 3, Room 01</span>
     <span id="sync-timer">Sync in 60s</span>
   </div>
 
@@ -260,32 +257,124 @@
       </div>
 
       <div class="bridge-banner">
-        <strong>Campus Skywalks Active:</strong> Connected clusters cross via <strong>Floor 3+ bridges</strong>.
+        <strong>Campus Skywalks Active:</strong> Buildings 33–34, 36–38, and 25–28 connect directly via <strong>Floor 3+ bridges</strong>[cite: 17, 23].
       </div>
     </div>
 
-    <!-- The Two Action Buttons -->
     <div class="btn-group">
       <button id="btn-nearest" class="btn" onclick="switchView('nearest')">📍 See Nearest Usable</button>
       <button id="btn-all" class="btn active-tab" onclick="switchView('all')">📋 See All Coolers</button>
     </div>
 
-    <!-- Container for Cooler Cards -->
-    <div id="results-area">
-      <p style="text-align: center; color: var(--muted); padding: 20px;">Streaming sensor telemetry...</p>
-    </div>
+    <div id="results-area"></div>
   </div>
 </div>
 
 <script>
+  const CONNECTED_CLUSTERS = [
+    { id: "CL-A", blocks: ["33", "34"] },
+    { id: "CL-B", blocks: ["36", "37", "38"] },
+    { id: "CL-C", blocks: ["25", "26", "27", "28"] }
+  ];
+
+  const CAMPUS_BLOCKS = ["33", "34", "36", "37", "38", "25", "26", "27", "28"];
+
+  const BASE_COOLERS = [];
+  CAMPUS_BLOCKS.forEach(block => {
+    BASE_COOLERS.push(
+      { id: `WC-B${block}-F2`, name: `Block ${block} - Floor 2 Central`, block, floor: 2, near_class: 5, profile: "chilled" },
+      { id: `WC-B${block}-F4`, name: `Block ${block} - Floor 4 Central`, block, floor: 4, near_class: 5, profile: "hot_fault" },
+      { id: `WC-B${block}-F6`, name: `Block ${block} - Floor 6 Central`, block, floor: 6, near_class: 5, profile: "empty_dry" },
+      { id: `WC-B${block}-F8`, name: `Block ${block} - Floor 8 Central`, block, floor: 8, near_class: 5, profile: "chilled" }
+    );
+  });
+
+  function getCluster(b) {
+    return CONNECTED_CLUSTERS.find(g => g.blocks.includes(b)) || null;
+  }
+
+  function calculateDistance(uBlock, uFloor, uClass, cBlock, cFloor, cClass) {
+    const sameBlock = (uBlock === cBlock);
+    const floorDiff = Math.abs(uFloor - cFloor);
+    const corridorDiff = Math.abs(uClass - cClass);
+    let dist = (floorDiff * 25) + (corridorDiff * 8);
+    let bridgeNote = "";
+
+    if (!sameBlock) {
+      const uC = getCluster(uBlock);
+      const cC = getCluster(cBlock);
+      if (uC && cC && (uC.id === cC.id)) {
+        if (uFloor < 3) {
+          dist += 50 + ((3 - uFloor) * 25);
+          bridgeNote = `Take stairs to Floor 3 bridge into Block ${cBlock}`;
+        } else {
+          dist += 50;
+          bridgeNote = `Cross via Floor 3+ connector bridge into Block ${cBlock}`;
+        }
+      } else {
+        dist += (uFloor * 25) + 120 + (cFloor * 25);
+        bridgeNote = `Different wing: Cross via ground road into Block ${cBlock}`;
+      }
+    } else {
+      bridgeNote = `Same building (Block ${uBlock})`;
+    }
+    return { dist, bridgeNote };
+  }
+
+  function generateTelemetry(uBlock, uFloor, uClass) {
+    return BASE_COOLERS.map(c => {
+      let temp, tankLevel, tds, statusCode, statusLabel, isUsable;
+
+      if (c.profile === "chilled") {
+        temp = (11.0 + (Math.random() * 2 - 1)).toFixed(1);
+        tankLevel = Math.floor(Math.random() * 30) + 65;
+        tds = Math.floor(Math.random() * 20) + 95;
+        statusCode = "CHILLED";
+        statusLabel = "Chilled & Ready";
+        isUsable = true;
+      } else if (c.profile === "hot_fault") {
+        temp = (35.5 + (Math.random() * 3)).toFixed(1);
+        tankLevel = Math.floor(Math.random() * 35) + 40;
+        tds = Math.floor(Math.random() * 20) + 110;
+        statusCode = "HOT";
+        statusLabel = "Hot / Chiller Failed";
+        isUsable = false;
+      } else {
+        temp = (28.0 + Math.random()).toFixed(1);
+        tankLevel = Math.floor(Math.random() * 4);
+        tds = 0;
+        statusCode = "EMPTY";
+        statusLabel = "Empty / No Water";
+        isUsable = false;
+      }
+
+      const { dist, bridgeNote } = calculateDistance(uBlock, uFloor, uClass, c.block, c.floor, c.near_class);
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+
+      return {
+        ...c,
+        temperature_c: temp,
+        tank_level_percent: tankLevel,
+        tds_ppm: tds,
+        status_code: statusCode,
+        status_label: statusLabel,
+        is_usable: isUsable,
+        distance_meters: dist,
+        route_note: bridgeNote,
+        last_updated: timeStr
+      };
+    }).sort((a, b) => a.distance_meters - b.distance_meters);
+  }
+
   let activeMode = 'all';
   let countdown = 60;
 
   function handleLocationChange() {
     const block = document.getElementById('user-block').value;
-    const floor = document.getElementById('user-floor').value;
-    const room = document.getElementById('user-class').value;
-    document.getElementById('active-location-label').innerText = `Block ${block} • Floor ${floor}, Room ${room}`;
+    const floor = parseInt(document.getElementById('user-floor').value);
+    const room = parseInt(document.getElementById('user-class').value);
+    document.getElementById('active-location-label').innerText = `Block ${block} • Floor ${floor}, Room 0${room}`;
     loadData();
   }
 
@@ -296,36 +385,28 @@
     loadData();
   }
 
-  async function loadData() {
+  function loadData() {
     const block = document.getElementById('user-block').value;
-    const floor = document.getElementById('user-floor').value;
-    const room = document.getElementById('user-class').value;
+    const floor = parseInt(document.getElementById('user-floor').value);
+    const room = parseInt(document.getElementById('user-class').value);
     const container = document.getElementById('results-area');
 
-    try {
-      if (activeMode === 'nearest') {
-        const res = await fetch(`/api/coolers/nearest?block=${block}&floor=${floor}&classroom=${room}`);
-        const data = await res.json();
-        
-        container.innerHTML = `
-          <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 700; color: #065f46;">
-            Closest <u>Working & Chilled</u> Water Point for Your Position:
-          </div>
-          ${renderCard(data.nearest)}
-        `;
-      } else {
-        const res = await fetch(`/api/coolers?block=${block}&floor=${floor}&classroom=${room}`);
-        const data = await res.json();
-        container.innerHTML = data.coolers.map(c => renderCard(c)).join('');
-      }
-    } catch (err) {
-      container.innerHTML = '<p style="color: red; text-align: center;">Backend unreachable. Ensure server is running.</p>';
+    const telemetry = generateTelemetry(block, floor, room);
+
+    if (activeMode === 'nearest') {
+      const nearestUsable = telemetry.find(c => c.is_usable) || telemetry[0];
+      container.innerHTML = `
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 700; color: #065f46;">
+          Closest <u>Working & Chilled</u> Water Point for Your Position:
+        </div>
+        ${renderCard(nearestUsable)}
+      `;
+    } else {
+      container.innerHTML = telemetry.map(c => renderCard(c)).join('');
     }
   }
 
   function renderCard(c) {
-    if (!c) return '<p>No matching coolers found.</p>';
-
     let badgeClass = 'badge-chilled';
     let cardClass = '';
     let tempColor = 'var(--lpu-dark-orange)';
@@ -348,7 +429,7 @@
         <div class="card-top">
           <div>
             <div class="card-title">${c.name}</div>
-            <div style="font-size: 0.74rem; color: var(--muted);">${c.near_class}</div>
+            <div style="font-size: 0.74rem; color: var(--muted);">Near Room ${c.floor}0${c.near_class}</div>
           </div>
           <span class="badge ${badgeClass}">${c.status_label}</span>
         </div>
@@ -389,9 +470,7 @@
     document.getElementById('sync-timer').innerText = `Sync in ${countdown}s`;
   }, 1000);
 
-  window.onload = () => {
-    handleLocationChange();
-  };
+  window.onload = handleLocationChange;
 </script>
 
 </body>
